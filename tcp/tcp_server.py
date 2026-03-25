@@ -4,6 +4,7 @@ import threading
 IP = '0.0.0.0'  # ecoute sur toutes les interfaces
 PORT = 9999
 
+clients = []  # liste pour garder les sockets clients
 
 def main():
     # creer un socket tcp
@@ -17,36 +18,41 @@ def main():
     # 2 Accepter maximum 5 connexions en attente avant de refuser les suivantes.
     server.listen(5)
     print(f'[*] Listening on {IP}:{PORT}')
-    print(f"[SERVEUR] En ecoute sur {IP}:{PORT}")
-
-    while True:
+     
+    try:
         # 3 accept() : cree une NOUVELLE socket : Cette socket est speciale pour ce client (est distincte de la socket principale)
                     #   Bbbloque le serveur jusqua ce qu un client se connecte
                     #   Le serveur attend qu un client fasse connect()
-        client, address = server.accept()
-        print(f'[*] Accepted connection from {address[0]}:{address[1]}')
+        while True:
+            client, address = server.accept()
+            print(f'[*] Connexion acceptée de {address[0]}:{address[1]}')
+            clients.append(client)
+            thread = threading.Thread(target=handle_client, args=(client,))
+            thread.start()
+    except KeyboardInterrupt:
+        print("\n[!] Fermeture du serveur...")
+    finally:
+        # fermer tous les clients
+        for c in clients:
+            c.close()
+        server.close()
+        print("[*] Serveur fermé proprement.")            # 4
 
-        client_handler = threading.Thread(
-            target=handle_client,
-            args=(client,)
-        )
-        client_handler.start()               # 4
 
-
-# def handle_client(client_socket):            # 5
-#     with client_socket as sock:
-#         while True:                          #  reste en vie
-#             request = sock.recv(1024)
-#             if not request:                  # client déconnecté
-#                 break
-#             print(f'[*] Received: {request.decode("utf-8")}')
-#             sock.send(b'ACK recu aa')
-
-def handle_client(client_socket):            
+def handle_client(client_socket):            # 5
     with client_socket as sock:
-        request = sock.recv(1024)
-        print(f'[*] Received: {request.decode("utf-8")}')
-        sock.send(b'ACK recu aa')
+        while True:                          #  reste en vie
+            request = sock.recv(1024)
+            if not request:                  # client déconnecté
+                break
+            print(f'[*] Received: {request.decode("utf-8")}')
+            sock.send(b'ACK recu aa')
+
+# def handle_client(client_socket):            
+#     with client_socket as sock:
+#         request = sock.recv(1024)
+#         print(f'[*] Received: {request.decode("utf-8")}')
+#         sock.send(b'ACK recu aa')
 
 
 if __name__ == '__main__':
