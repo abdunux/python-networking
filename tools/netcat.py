@@ -37,7 +37,6 @@ class NetCat:
     def send(self):
         # Connect to target
         self.socket.connect((self.args.target, self.args.port))
-
         # Send initial buffer (if any)
         if self.buffer:
             self.socket.send(self.buffer)
@@ -63,7 +62,6 @@ class NetCat:
                 buffer = input("> ")
                 buffer += "\n"
                 self.socket.send(buffer.encode())
-
         except KeyboardInterrupt:
             print("\n[*] Connection closed.")
             self.socket.close()
@@ -75,15 +73,19 @@ class NetCat:
         self.socket.bind((self.args.target, self.args.port))
         self.socket.listen(5)
         print(f"[*] Listening on {self.args.target}:{self.args.port}")
+        try: 
+            while True:
+                client_socket, addr = self.socket.accept()
+                print(f"[*] Connection from {addr}")
 
-        while True:
-            client_socket, addr = self.socket.accept()
-            print(f"[*] Connection from {addr}")
-
-            client_thread = threading.Thread(
-                target=self.handle, args=(client_socket,)
-            )
-            client_thread.start()
+                client_thread = threading.Thread(
+                    target=self.handle, args=(client_socket,)
+                )
+                client_thread.start()
+        except KeyboardInterrupt:
+                print("\n[*] Server stopped.")
+                self.socket.close()
+                sys.exit()
 
     # ===================== HANDLE CLIENT =====================
     def handle(self, client_socket):
@@ -126,11 +128,12 @@ class NetCat:
 
         # ---- MODE NORMAL ----
         else:
+            client_socket.send(b"Welcome to our server \n") # Faire parler le serveur en premier
             while True:
-                data = client_socket.recv(4096)
+                data = client_socket.recv(4096) # le serveur attend la reponse du client
                 if not data:
                     break
-
+                
                 print(f"[SERVER RECEIVED] {data.decode()}")
                 client_socket.send(b"Message bien recu")  # END
 
@@ -206,7 +209,7 @@ if __name__ == "__main__":
     if args.listen:
         buffer = b""
     else:
-        buffer = sys.stdin.read().encode()
+        buffer = sys.stdin.read().encode() # stdin = ton clavier
 
     nc = NetCat(args, buffer)
     nc.run()
